@@ -1,0 +1,46 @@
+version: '3.6'
+
+networks:
+    traefik_public:
+        external: true
+    internal:
+        driver: overlay
+        ipam:
+            config:
+                -   subnet: 172.16.200.0/24
+
+services:
+
+    proxy:
+        image: clubsys/oauth2-proxy
+        networks:
+            - internal
+            - traefik_public
+        environment:
+            - "OAUTH2_PROXY_CLIENT_ID=ccb600641d8c5ba1ef8b60b45abea9d5610ff73adbcdd79ff89966d3a33b210c"
+            - "OAUTH2_PROXY_CLIENT_SECRET=f19afcff14b916022630ce401a7b185e59dec50d14f4517110b9946141f2a5d6"
+            - "OAUTH2_PROXY_COOKIE_SECRET=1d8c5ba1ef8b60b47b185e59dec50d14"
+        deploy:
+            labels:
+                - "traefik.frontend.rule=Host:clients.healthclubsystems.com"
+                - "traefik.docker.network=traefik_public"
+                - "traefik.port=4180"
+        command: |
+            -cookie-secure=false
+            -upstream=http://app:80
+            -http-address=0.0.0.0:4180
+            -provider=gitlab
+            -scope=read_user
+            -signin-message="Clubsys - Wekan"
+            -redirect-url=https://clients.healthclubsystems.com/oauth2/callback
+            -email-domain=healthclubsystems.com
+            -login-url="https://git.healthclubsystems.com/oauth/authorize"
+            -redeem-url="http://gitlab_omnibus/oauth/token"
+            -validate-url="http://gitlab_omnibus/api/v4/user"
+            -set-xauthrequest
+
+    app:
+        image: clubsys/clients-fe
+        hostname: clients-fe
+        networks:
+            - internal
